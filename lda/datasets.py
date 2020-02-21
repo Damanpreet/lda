@@ -9,12 +9,12 @@ _test_dir = os.path.join(os.path.dirname(__file__), 'tests')
 
 
 def load_reuters():
-        reuters_ldac_fn = os.path.join(_test_dir, 'reuters.ldac')
+        reuters_ldac_fn = os.path.join(_test_dir, 'toy.ldac')
         return lda.utils.ldac2dtm(open(reuters_ldac_fn), offset=0)
 
 
 def load_reuters_vocab():
-        reuters_vocab_fn = os.path.join(_test_dir, 'reuters.tokens')
+        reuters_vocab_fn = os.path.join(_test_dir, 'toy.tokens')
         with open(reuters_vocab_fn) as f:
             vocab = tuple(f.read().split())
         return vocab

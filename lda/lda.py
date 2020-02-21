@@ -107,8 +107,6 @@ class LDA:
 
         # random numbers that are reused
         rng = lda.utils.check_random_state(random_state)
-
-        # generate an array of random numbers.
         self._rands = rng.rand(1024**2 // 8)  # 1MiB of random variates
 
         # configure console logging if not already configured
@@ -241,16 +239,11 @@ class LDA:
             n_features is the number of features. Sparse matrix allowed.
         """
         random_state = lda.utils.check_random_state(self.random_state)
-        
-        # why? 
-        rands = self._rands.copy() # these are the random numbers generated while initialization.
-
+        rands = self._rands.copy()
         self._initialize(X)
         for it in range(self.n_iter):
             # FIXME: using numpy.roll with a random shift might be faster
             random_state.shuffle(rands)
-
-            # number of steps after which to compute the likelihood.
             if it % self.refresh == 0:
                 ll = self.loglikelihood()
                 logger.info("<{}> log likelihood: {:.0f}".format(it, ll))
@@ -259,16 +252,12 @@ class LDA:
             self._sample_topics(rands)
         ll = self.loglikelihood()
         logger.info("<{}> log likelihood: {:.0f}".format(self.n_iter - 1, ll))
-        
         # note: numpy /= is integer division
-        # topic-word distribution
         self.components_ = (self.nzw_ + self.eta).astype(float)
-        self.components_ /= np.sum(self.components_, axis=1)[:, np.newaxis] # / by count of words in each topic.
-        self.topic_word_ = self.components_ # topic-word matrix.
-        
-        # document-topic distribution
+        self.components_ /= np.sum(self.components_, axis=1)[:, np.newaxis]
+        self.topic_word_ = self.components_
         self.doc_topic_ = (self.ndz_ + self.alpha).astype(float)
-        self.doc_topic_ /= np.sum(self.doc_topic_, axis=1)[:, np.newaxis] # / by count of topics in each document.
+        self.doc_topic_ /= np.sum(self.doc_topic_, axis=1)[:, np.newaxis]
 
         # delete attributes no longer needed after fitting to save memory and reduce clutter
         del self.WS
@@ -277,9 +266,9 @@ class LDA:
         return self
 
     def _initialize(self, X):
-        D, W = X.shape # get the count of number of documents, and number of unique words.
-        N = int(X.sum()) # get the total number of words in all the documents. this returns the sum of the counts.
-        n_topics = self.n_topics # number of topics you want to divide the documents into.
+        D, W = X.shape
+        N = int(X.sum())
+        n_topics = self.n_topics
         n_iter = self.n_iter
         logger.info("n_documents: {}".format(D))
         logger.info("vocab_size: {}".format(W))
@@ -287,36 +276,21 @@ class LDA:
         logger.info("n_topics: {}".format(n_topics))
         logger.info("n_iter: {}".format(n_iter))
 
-        # topics - words matrix. (integer type)
         self.nzw_ = nzw_ = np.zeros((n_topics, W), dtype=np.intc)
-
-        # document - topics matrix.
         self.ndz_ = ndz_ = np.zeros((D, n_topics), dtype=np.intc)
-
-        # topics array
         self.nz_ = nz_ = np.zeros(n_topics, dtype=np.intc)
 
-        # returns a word and document matrix.
-        # WS - 1 1 1 2 2 (if word 1 appears 3 times in doc 0 and word 2 appears 2 times in doc0)
-        # DS - 0 0 0 0 0 (document corresponding to the word)    
         self.WS, self.DS = WS, DS = lda.utils.matrix_to_lists(X)
-
-        # initialize a new empty array (contains random nums) like word - count matrix.
-        # will be used to store the topic distribution corresponding to the words.
         self.ZS = ZS = np.empty_like(self.WS, dtype=np.intc)
-    
-        # how is this equal
-        # this is because the word location is repeated number of time that word appears in the document.
         np.testing.assert_equal(N, len(WS))
         for i in range(N):
             w, d = WS[i], DS[i]
-            z_new = i % n_topics # assign a topic to each word. same words can have different topics assigned.
-            ZS[i] = z_new 
-            # increment the counts of each document assigned to a topic, a word assigned to a topic and total no of times that topic appears.
-            ndz_[d, z_new] += 1 
+            z_new = i % n_topics
+            ZS[i] = z_new
+            ndz_[d, z_new] += 1
             nzw_[z_new, w] += 1
             nz_[z_new] += 1
-        self.loglikelihoods_ = [] # track the log-likelikehood.
+        self.loglikelihoods_ = []
 
     def loglikelihood(self):
         """Calculate complete log likelihood, log p(w,z)
@@ -334,16 +308,5 @@ class LDA:
         n_topics, vocab_size = self.nzw_.shape
         alpha = np.repeat(self.alpha, n_topics).astype(np.float64)
         eta = np.repeat(self.eta, vocab_size).astype(np.float64)
-
-        
-        # WS - 1 1 1 2 2 (if word 1 appears 3 times in doc 0 and word 2 appears 2 times in doc0)
-        # DS - 0 0 0 0 0 (document corresponding to the word)
-        # ZS - initialize a new empty array (contains random nums) like word - count matrix.
-        # nzw_ - matrix of topic word distribution
-        # ndz_ - document topic distribution
-        # nz_ - topic distribution
-        # alpha - dirichlet prior for distribution over topics. size = no of topics 
-        # eta - dirichlet prior for distribution over words. size = no of words (vocab)
-        # rands - shuffled random numbers
         lda._lda._sample_topics(self.WS, self.DS, self.ZS, self.nzw_, self.ndz_, self.nz_,
-                                alpha, eta, rands, self.n_topics) # new parameter self.n_topics for the normalization constant.
+                                alpha, eta, rands)

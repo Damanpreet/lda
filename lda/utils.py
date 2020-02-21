@@ -20,9 +20,7 @@ def check_random_state(seed):
         # i.e., use existing RandomState
         return np.random.mtrand._rand
     if isinstance(seed, (numbers.Integral, np.integer)):
-        # this function exposes a exposes a number of methods for generating random numbers drawn from a variety of probability distributions.
-        # we can use beta, dirichlet distribution.
-        return np.random.RandomState(seed) 
+        return np.random.RandomState(seed)
     if isinstance(seed, np.random.RandomState):
         return seed
     raise ValueError("{} cannot be used as a random seed.".format(seed))
@@ -50,9 +48,6 @@ def matrix_to_lists(doc_word):
     sparse = True
     try:
         # if doc_word is a scipy sparse matrix
-        # our matrix will be sparse because not every word is contained in every document.
-        # so sparse is true.
-        # convert array to list of lists format.
         doc_word = doc_word.copy().tolil()
     except AttributeError:
         sparse = False
@@ -62,19 +57,11 @@ def matrix_to_lists(doc_word):
 
     ii, jj = np.nonzero(doc_word)
     if sparse:
-        ss = tuple(doc_word[i, j] for i, j in zip(ii, jj)) # returns a tuple of all non-zero counts.
+        ss = tuple(doc_word[i, j] for i, j in zip(ii, jj))
     else:
         ss = doc_word[ii, jj]
 
-    # document location. 
-    # if there are total 15 words in doc1, 20 words in doc2.
-    # this will look like 1..15times, 2..20times
     DS = np.repeat(ii, ss).astype(np.intc)
-
-    # words appearing in the matrix.
-    # doc1 - w1 2times, w2 - 13 times.
-    # doc2 - w1 10 times, w2 - 10 times
-    # 1 1 2 2 2 .. 13 times , 1 1..10 times, 2 2 .. 10 times
     WS = np.repeat(jj, ss).astype(np.intc)
     return WS, DS
 
@@ -166,37 +153,18 @@ def ldac2dtm(stream, offset=0):
         # skip empty lines
         if not l:
             continue
-
-        # first token of each line.
-        # it is the number of unique token in that document.
         unique_terms = int(l.split(' ')[0])
-
-        # count of each term 
-        # doc - term freq.
         term_cnt_pairs = [s.split(':') for s in l.split(' ')[1:]]
-
         for v, _ in term_cnt_pairs:
             # check that format is indeed LDA-C with the appropriate offset
             if int(v) == 0 and offset == 1:
                 raise ValueError("Indexes in LDA-C are offset 1")
-        
-        # term - count tuple
         term_cnt_pairs = tuple((int(v) - offset, int(cnt)) for v, cnt in term_cnt_pairs)
-        
-        # verify that data is correct
         np.testing.assert_equal(unique_terms, len(term_cnt_pairs))
-        
-        # get the max value of the token from each document. this is
-        # useful to decide the matrix size.
-        # rows - no of documents, columns - no of unique tokens. 
         V = max(V, *[v for v, cnt in term_cnt_pairs])
-        
-        # write the dataset.
         data.append(term_cnt_pairs)
         N += 1
     V = V + 1
-
-    # document-term matrix
     dtm = np.zeros((N, V), dtype=np.intc)
     for i, doc in enumerate(data):
         for v, cnt in doc:

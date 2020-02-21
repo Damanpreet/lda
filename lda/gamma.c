@@ -145,7 +145,7 @@ double lda_lgamma(double x)
     int i;
 
     if (x < 12.0)
-        return log(fabs(lda_gamma(x))); // fabs - absolute value of the number
+        return log(fabs(lda_gamma(x)));
 
     z = 1.0 / (x * x);
     sum = c[7];
